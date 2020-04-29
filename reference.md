@@ -137,37 +137,56 @@ Example:
 This example returns a function which will print a number that is 2
 greater than the argument it is passed.
 
-### `limit-values` limit varargs/multiple returns to the first n values
+### `pick-values` restrict varargs/multiple returns to exactly the first n values
 
 Discard all values after the first n when dealing with multi-values (`...`)
 and multiple returns. Useful for composing functions that return multiple values
-with variadic functions.
+with variadic functions. Expands to a `let` expression that binds and re-emits
+exactly n values, e.g.
+
+```fennel
+(pick-values 2 (func))
+```
+expands to
+```fennel
+(let [(_0_ _1_) (func)] (values _0_ _1_))
+```
 
 Example:
 
 ```fennel
-(limit-values 0 :a :b :c :d :e) ; => nil
-[(limit-values 2 (table.unpack [:a :b :c]))] ;-> ["a" "b"]
+(pick-values 0 :a :b :c :d :e) ; => nil
+[(pick-values 2 (table.unpack [:a :b :c]))] ;-> ["a" "b"]
 
 (fn sum-all [x y ...]
   (let [x (or x 0) y (or y 0)]
     (if (= (select :# ...) 0) (+ x y) (sum-all (+ x y) ...))))
 
-(sum-all (limit-values 2 (values 10 10))) ; => 20
-(->> [1 2 3 4 5] (table.unpack) (limit-values 3) (sum-all)) ; => 6
+(sum-all (pick-values 2 (values 10 10))) ; => 20
+(->> [1 2 3 4 5] (table.unpack) (pick-values 3) (sum-all)) ; => 6
 ```
 
-### `limit-args` wrap a function to accept only first n arguments
+**Note:** If n is greater than the number of values supplied, n values will still be emitted:
 
-Like `limit-values`, but takes an integer, `n`, and a function or other operation,
-f, and creates a new function that invokes `f` with only the first n arguments.
+```fennel
+(select :# (pick-values 5 "one" "two")) ; => 5
+[(pick-values 5 "one" "two")] ; => ["one" "two" nil nil nil]
+```
+
+### `pick-args` wrap a function to accept only first n arguments
+
+Like `pick-values`, but takes an integer, `n`, and a function or other operation,
+`f`, and creates a new function that invokes `f` with exactly `n` arguments.
 
 Example:
 
 ```fennel
-(local sum-2 (limit-args 2 sum-all))
+(local sum-2 (pick-args 2 sum-all))
 (sum-2 5 5 5 5) ; => 10
-(-> [1 2 3 4 5] (table.unpack) ((limit-args 3 sum-all))) ; => 6
+(-> [1 2 3 4 5] (table.unpack) ((pick-args 3 sum-all))) ; => 6
+
+(fn to-table [...] [...])
+((pick-args 3 to-table) "one" "two") ; => ["one" "two" nil]
 ```
 
 ## Binding
